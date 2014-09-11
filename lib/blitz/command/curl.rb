@@ -13,8 +13,10 @@ class Curl < Command # :nodoc:
         end
         if test.class == Blitz::Curl::Sprint
             sprint test
-        else
+        elsif test.class == Blitz::Curl::Rush
             rush test
+        else
+            performance test
         end
     end
     
@@ -146,6 +148,96 @@ class Curl < Command # :nodoc:
         end
     end
 
+    def performance job
+        begin
+            job.queue
+            error "performance from #{yellow(job.region)}"
+            result = job.result
+            print_performance_result job.args, result
+        rescue ::Blitz::Curl::Error::Authorize => e
+            authorize_error e
+        # QUESTION shall we ::Blitz::Curl::Error::Step ?
+            error "#{red(e.message)}"
+        rescue ::Blitz::Curl::Error => e
+            error red(e.message)
+        end
+    end
+    
+    def to_msec date_str
+        DateTime.parse(date_str).strftime('%Q').to_i
+    end
+
+    def print_performance_result args, result
+        # HAR data
+        puts
+        print "%9s " % "Started"
+        print "%9s " % "Duration"
+        print "%9s " % "Response"
+        print "%4s " % "URL"
+        puts
+        
+        log = result.har['log']
+        entries = log['entries']
+        started = to_msec entries[0]['startedDateTime']
+        entries.each do |entry|
+            code = entry['response']['status'].to_i
+            next if code == 0
+       
+            print "%9s " % "#{to_msec(entry['startedDateTime']) - started}"
+            print "%9s " % "#{entry['time']}"
+            print code >= 300 ? code >= 400 ? red("%9s " % code) : yellow("%9s " % code) : green("%9s " % code)
+            print " #{entry['request']['url']}"
+            puts
+        end
+
+        puts
+        puts "Load time: #{green(result.har['log']['pages'][0]['pageTimings']['onLoad'].to_s)} msec"
+        puts
+        
+        # Analysis data
+        print_problems result, 1
+        print_problems result, 2
+        print_problems result, 3
+    end
+    
+    def print_problems result, priority
+        return if priority > 3 or priority < 1
+
+        type_to_label = {
+            "js_errors" => "Javascript errors",
+            "http_errors_responses" => "HTTP errors responses",
+            "add_expires_cache_control" => "Add Expires or Cache-Control headers",
+            "redirects" => "Avoid Redirects",
+            "compress_gzip" => "Compress components with gzip",
+            "minify" => "Minify JavaScript",
+            "http_requests" => "Make fewer HTTP requests",
+            "use_cdn" => "Use a Content Delivery Network",
+            "reduce_dns_lookups" => "Reduce DNS Lookups",
+            "remove_duplicates" => "Remove Duplicate Scripts",
+            "reduce_cookie_size" => "Reduce cookies size",
+            "cookie_free_domains" => "Use cookies-free domains"
+        }
+        
+        priority_to_message = {
+            1 => ["Found #{red('%d problems')}",
+                "Found #{red('one problem')}"],
+            2 => ["Found #{yellow('%d warnings')}",
+                "Found #{yellow('one warning')}"],
+            3 => ["Consider also #{blue('the following %d tips')}",
+                "Consider also #{blue('the following tip')}"]
+        }
+        
+        problems = result.analysis.select { |problem| problem['priority'] == priority and problem['entries'].count > 0 }
+        if problems.count > 0
+            puts priority_to_message[priority][problems.count != 1 ? 0 : 1] % problems.count
+            problems.each do |problem|
+                desc = type_to_label.fetch(problem['type'], problem['type'])
+                puts "  * #{desc} (#{problem['entries'].count} URLs)"
+            end
+            puts
+        end
+    end 
+
     def rush job
         continue = true
         last_index = nil
@@ -270,7 +362,8 @@ class Curl < Command # :nodoc:
             { :short => '-o', :long => '--output', :value => '<filename>', :help => 'Output to file (CSV)' },
             { :short => '-1', :long => '--tlsv1', :value => '', :help => 'Use TLSv1 (SSL)' },
             { :short => '-2', :long => '--sslv2', :value => '', :help => 'Use SSLv2 (SSL)' },
-            { :short => '-3', :long => '--sslv3', :value => '', :help => 'Use SSLv3 (SSL)' }
+            { :short => '-3', :long => '--sslv3', :value => '', :help => 'Use SSL (SSLv3)' },
+            { :long => '--har', :value => '', :help => 'Run performance test' }
         ]
 
         max_long_size = helps.inject(0) { |memo, obj| [ obj[:long].size, memo ].max }

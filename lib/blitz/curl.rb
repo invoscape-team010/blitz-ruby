@@ -1,4 +1,5 @@
 require 'blitz/utils'
+require 'blitz/curl/performance'
 
 class Blitz
 class Curl    
@@ -13,7 +14,9 @@ class Curl
         argv = arguments.is_a?(Array) ? arguments : xargv(arguments)
         args = parse_cli argv
         raise "help" if args['help'] 
-        if not args['pattern']
+        if args['har']
+            Blitz::Curl::Performance.new args
+        elsif not args['pattern']
             Blitz::Curl::Sprint.new args
         else
             Blitz::Curl::Rush.new args
@@ -132,6 +135,11 @@ class Curl
 
                 if [ '-X', '--request' ].member? k
                     step['request'] = shift(k, argv)
+                    next
+                end
+                
+                if [ '--har' ].member? k
+                    hash['har'] = true
                     next
                 end
 
