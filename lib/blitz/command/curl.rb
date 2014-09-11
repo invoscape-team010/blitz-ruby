@@ -170,10 +170,10 @@ class Curl < Command # :nodoc:
     def print_performance_result args, result
         # HAR data
         puts
-        print "%9s " % "Started"
-        print "%9s " % "Duration"
-        print "%9s " % "Response"
-        print "%4s " % "URL"
+        print yellow("%9s " % "Started")
+        print yellow("%9s " % "Duration")
+        print green("%9s " % "Response")
+        print magenta("%4s " % "URL")
         puts
         
         log = result.har['log']
