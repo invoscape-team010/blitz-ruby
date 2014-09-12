@@ -153,7 +153,7 @@ class Curl < Command # :nodoc:
             job.queue
             error "performance from #{yellow(job.region)}"
             result = job.result
-            print_performance_result job.args, result
+            print_performance_result job, result
         rescue ::Blitz::Curl::Error::Authorize => e
             authorize_error e
         # QUESTION shall we ::Blitz::Curl::Error::Step ?
@@ -167,7 +167,7 @@ class Curl < Command # :nodoc:
         DateTime.parse(date_str).strftime('%Q').to_i
     end
 
-    def print_performance_result args, result
+    def print_performance_result job, result
         # HAR data
         puts
         print yellow("%9s " % "Started")
@@ -198,6 +198,17 @@ class Curl < Command # :nodoc:
         print_problems result, 1
         print_problems result, 2
         print_problems result, 3
+        
+        # Other options
+        if job.screenshot_file != nil
+          sleep 1 # api does't like too frequent calls
+          screenshot = result.get_screenshot
+          File.write(job.screenshot_file, screenshot)
+        end
+        
+        if job.har_file != nil
+          File.write(job.har_file, JSON.pretty_generate(result.har))
+        end
     end
     
     def print_problems result, priority
@@ -359,11 +370,13 @@ class Curl < Command # :nodoc:
             { :short => '-X', :long => '--request', :value => '<string>', :help => 'Request method to use (GET, HEAD, PUT, etc.)' },
             { :short => '-v', :long => '--variable', :value => '<string>', :help => 'Define a variable to use' },
             { :short => '-V', :long => '--verbose', :value => '', :help => 'Print the request/response headers' },
-            { :short => '-o', :long => '--output', :value => '<filename>', :help => 'Output to file (CSV)' },
+            { :short => '-o', :long => '--output', :value => '<file>', :help => 'Output to file (CSV)' },
             { :short => '-1', :long => '--tlsv1', :value => '', :help => 'Use TLSv1 (SSL)' },
             { :short => '-2', :long => '--sslv2', :value => '', :help => 'Use SSLv2 (SSL)' },
             { :short => '-3', :long => '--sslv3', :value => '', :help => 'Use SSL (SSLv3)' },
-            { :long => '--har', :value => '', :help => 'Run performance test' }
+            { :long => '--har', :value => '', :help => 'Run performance test' },
+            { :short => '-c', :long => '--screenshot', :value => '<file>', :help => 'Save PNG screenshot to file (only with --har)' },
+            { :short => '-R' , :long => '--dump-har', :value => '<file>', :help => 'Save raw HAR data (only with --har)' }
         ]
 
         max_long_size = helps.inject(0) { |memo, obj| [ obj[:long].size, memo ].max }

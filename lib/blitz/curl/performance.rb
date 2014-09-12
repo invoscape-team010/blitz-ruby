@@ -11,25 +11,27 @@ class Performance
         
         # The analysis hints and warnings (including js exceptions)
         attr_reader :analysis
-        
+
         # The har data (without response bodies)
         # see http://www.softwareishard.com/blog/har-12-spec/ for details
         attr_reader :har
         
-        def initialize json # :nodoc:
+        def initialize json, job_id # :nodoc:
             result = json['result']
             @region = result['region']
             @analysis = result['analysis']
             @har = result['har']
+            @job_id = job_id
+        end
+        
+        def get_screenshot
+            Command::API.client.get_screenshot @job_id
         end
     end
     
     def queue # :nodoc:
-        args.delete 'pattern'
-        args.delete :pattern
-        args['make_screenshot'] = false
-        
         res = Command::API.client.curl_execute args
+
         raise Error.new(res) if res['error']
         @job_id = res['job_id']
         @region = res['region']
@@ -38,8 +40,23 @@ class Performance
     attr_reader :job_id # :nodoc:
     attr_reader :region # :nodoc:
     attr_reader :args # :nodoc:
+    attr_reader :screenshot_file # :nodoc:
+    attr_reader :har_file # :nodoc:
     
     def initialize args # :nodoc:
+        args.delete 'pattern'
+        args.delete :pattern
+ 
+        if args.has_key? 'screenshot-file'
+            @screenshot_file = args['screenshot-file']
+            args.delete 'screenshot-file'
+        else
+            @screenshot_file = nil
+        end
+        
+        @har_file = (args.has_key? 'har-file') ? args['har-file'] : nil
+        args.delete 'har-file'
+        
         @args = args
     end
     
@@ -76,7 +93,7 @@ class Performance
                 end
             end
             
-            return Result.new(job)
+            return Result.new(job, job_id)
         end
     end
     

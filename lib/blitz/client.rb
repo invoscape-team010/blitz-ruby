@@ -37,5 +37,9 @@ class Client # :nodoc:
     def abort_job job_id
         JSON.parse blitz["/api/1/jobs/#{job_id}/abort"].put ''
     end
+    
+    def get_screenshot job_id
+        blitz["/api/1/jobs/#{job_id}/resources/screenshot"].get
+    end
 end
 end

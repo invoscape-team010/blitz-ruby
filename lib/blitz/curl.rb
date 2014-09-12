@@ -142,7 +142,27 @@ class Curl
                     hash['har'] = true
                     next
                 end
-
+                
+                if [ '-c', '--screenshot' ].member? k
+                    if not hash['har']
+                      raise ArgumentError,
+                            "--screenshot allowed with --har only"
+                    else
+                      hash['screenshot-file'] = shift(k, argv)
+                      next
+                    end
+                end
+                
+                if [ '-R', '--dump-har' ].member? k
+                    if not hash['har']
+                      raise ArgumentError,
+                            "--dump-har allowed with --har only"
+                    else
+                      hash['har-file'] = shift(k, argv)
+                      next
+                    end
+                end
+                
                 if /-x:c/ =~ k or /--xtract:cookie/ =~ k
                     xname = shift(k, argv)
                     assert_match /^[a-zA-Z_][a-zA-Z_0-9]*$/, xname, 
