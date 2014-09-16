@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'json'
 
 describe Blitz::Command::Curl do
 
@@ -72,7 +73,22 @@ describe Blitz::Command::Curl do
       }
       Blitz::Curl::Rush::Result.new(rush)
     end
-
+    
+    def mocked_performance_args
+        {
+            "steps" => [{"url" => "http://5.184.109.209:8080"}],
+            "har" => true,
+            "screenshot-file" => "file.png",
+            "har-file" => "har.json"
+        }
+    end
+    
+    def mocked_performance
+        performance = { 'result' => JSON.parse(File.read(
+                File.expand_path("../../mocked_performance.json", __FILE__)))}
+        Blitz::Curl::Performance::Result.new performance, 'dummy_job_id'
+    end
+    
     context "#print_sprint_header" do
         def check_print_sprint_header path="/mocked/path/head.txt"
             request = mocked_sprint_request
@@ -185,4 +201,43 @@ describe Blitz::Command::Curl do
         end
     end
 
+    context "print_performance_result" do
+        def check_print_performance_result args
+            result = mocked_performance
+            obj = Blitz::Command::Curl.new
+            yield(obj, result)
+            obj.send(:print_sprint_result, args, result)
+        end
+
+        it "should do print har results" do
+            args = mocked_performance_args
+            args.delete "screenshot-file"
+            args.delete "har-file"
+            
+            curl = Blitz::Command::Curl.new
+            job = Blitz::Curl::Performance.new args
+            
+            result = mocked_performance
+            
+            curl.should_receive(:puts).with().exactly(7).times
+            curl.should_receive(:print).with("\e[33m  Started \e[0m")
+            curl.should_receive(:print).with("\e[33m Duration \e[0m")
+            curl.should_receive(:print).with("\e[32m Response \e[0m")
+            curl.should_receive(:print).with("\e[35m URL \e[0m")
+            curl.should_receive(:print).with("        0 ")
+            curl.should_receive(:print).with("        5 ")
+            curl.should_receive(:print).with("\e[32m      200 \e[0m")
+            curl.should_receive(:print).with(" http://5.184.109.209:8080/").once
+            curl.should_receive(:print).with("       10 ")
+            curl.should_receive(:print).with("        2 ")
+            curl.should_receive(:print).with("\e[31m      404 \e[0m")
+            curl.should_receive(:print).with(" http://5.184.109.209:8080/image_wrong.png").once
+            curl.should_receive(:puts).with("Load time: \e[32m20\e[0m msec");
+            curl.should_receive(:puts).with("Found \e[31m2 problems\e[0m");
+            curl.should_receive(:puts).with("  * HTTP errors responses (1 URLs)");
+            curl.should_receive(:puts).with("  * Add Expires or Cache-Control headers (1 URLs)");
+            
+            curl.send(:print_performance_result, job, result)
+        end
+    end
 end
