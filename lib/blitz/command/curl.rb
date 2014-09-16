@@ -356,7 +356,7 @@ class Curl < Command # :nodoc:
     def help
         helps = [
             { :short => '-A', :long => '--user-agent', :value => '<string>', :help => 'User-Agent to send to server' },
-            { :short => '-b', :long => '--cookie', :value => 'name=<string>', :help => 'Cookie to send to the server (multiple)' },
+            { :short => '-b', :long => '--cookie', :value => 'name=<string>', :help => 'Cookie to send to the server (multiple, also with --har)' },
             { :short => '-d', :long => '--data', :value => '<string>', :help => 'Data to send in a PUT or POST request' },
             { :short => '-D', :long => '--dump-header', :value => '<file>', :help => 'Print the request/response headers' },
             { :short => '-e', :long => '--referer', :value => '<string>', :help => 'Referer URL' },
@@ -366,7 +366,7 @@ class Curl < Command # :nodoc:
             { :short => '-r', :long => '--region', :value => '<string>', :help => 'california|oregon|virginia|singapore|ireland|japan' },
             { :short => '-s', :long => '--status', :value => '<number>', :help => 'Assert on the HTTP response status code' },
             { :short => '-T', :long => '--timeout', :value => '<ms>', :help => 'Wait time for both connect and responses' },
-            { :short => '-u', :long => '--user', :value => '<user[:pass]>', :help => 'User and password for authentication' },
+            { :short => '-u', :long => '--user', :value => '<user[:pass]>', :help => 'User and password for authentication (also with --har)' },
             { :short => '-X', :long => '--request', :value => '<string>', :help => 'Request method to use (GET, HEAD, PUT, etc.)' },
             { :short => '-v', :long => '--variable', :value => '<string>', :help => 'Define a variable to use' },
             { :short => '-V', :long => '--verbose', :value => '', :help => 'Print the request/response headers' },
