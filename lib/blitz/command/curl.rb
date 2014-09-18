@@ -264,6 +264,10 @@ class Curl < Command # :nodoc:
             if job.args.member?('output')
                 file = CSV.open(job.args['output'] || 'blitz.csv', 'w')
             end
+            
+            if not file
+              print_rush_result_headers
+            end
 
             job.result do |result|
                 if file
@@ -291,19 +295,19 @@ class Curl < Command # :nodoc:
         end
     end
 
-    def print_rush_result args, result, last_index
-        if last_index.nil?
-            print yellow("%6s " % "Time")
-            print "%6s " % "Users"
-            print green("%8s " % "Response")
-            print green("%8s " % "Hits")
-            print magenta("%8s " % "Timeouts")
-            print red("%8s " % "Errors")
-            print green("%8s " % "Hits/s")
-            print "%s" % "Mbps"
-            puts
-        end
+    def print_rush_result_headers
+        print yellow("%6s " % "Time")
+        print "%6s " % "Users"
+        print green("%8s " % "Response")
+        print green("%8s " % "Hits")
+        print magenta("%8s " % "Timeouts")
+        print red("%8s " % "Errors")
+        print green("%8s " % "Hits/s")
+        print "%s" % "Mbps"
+        puts
+    end
 
+    def print_rush_result args, result, last_index
         if last_index and result.timeline.size == last_index
             return
         end
