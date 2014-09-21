@@ -76,18 +76,10 @@ class Performance
             raise Error if not result
             
             # check possible errors
-            error = result['error'] # TODO different error names
+            error = result['error']
             if error
-                if error == 'dns'
-                    raise Error::DNS.new(result)
-                elsif error == 'connect'
-                    raise Error::Connect.new(result)
-                elsif error == 'timeout'
-                    raise Error::Timeout.new(result)
-                elsif error == 'parse'
-                    raise Error::Parse.new(result)
-                elsif error == 'assert'
-                    raise Error::Status.new(result)
+                if result['reason']
+                    raise Error::Performance.new(result)
                 else
                     raise Error
                 end
