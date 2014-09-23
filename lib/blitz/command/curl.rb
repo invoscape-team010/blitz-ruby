@@ -369,6 +369,7 @@ class Curl < Command # :nodoc:
             { :short => '-p', :long => '--pattern', :value => '<s>-<e>:<d>', :help => 'Ramp from s to e concurrent requests in d secs' },
             { :short => '-r', :long => '--region', :value => '<string>', :help => 'california|oregon|virginia|singapore|ireland|japan' },
             { :short => '-s', :long => '--status', :value => '<number>', :help => 'Assert on the HTTP response status code' },
+            { :short => '-k', :long => '--keepalive', :value => '', :help => 'Use keepalive connections' },
             { :short => '-T', :long => '--timeout', :value => '<ms>', :help => 'Wait time for both connect and responses' },
             { :short => '-u', :long => '--user', :value => '<user[:pass]>', :help => 'User and password for authentication (also with --har)' },
             { :short => '-X', :long => '--request', :value => '<string>', :help => 'Request method to use (GET, HEAD, PUT, etc.)' },

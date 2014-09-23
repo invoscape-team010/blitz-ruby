@@ -118,6 +118,11 @@ class Curl
                     next
                 end
 
+                if [ '-k', '--keepalive' ].member? k
+                    hash['keepalive'] = true
+                    next
+                end
+
                 if [ '-s', '--status' ].member? k
                     step['status'] = shift(k, argv).to_i
                     next
