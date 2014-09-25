@@ -25,6 +25,14 @@ class Curl
     
     private
     
+    
+    def self.parse_list list_expr
+        # split, make sure comma isn't escaped
+        entries = list_expr.split /(?<!\\),/
+        # unescape commas
+        entries.map {|e| e.gsub "\\,", "," }
+    end
+
     def self.xargv text
         argv = []
         while not text.empty?
@@ -189,7 +197,7 @@ class Curl
                     vhash = step['variables'][vname] = Hash.new
                     if vargs.match /^(list)?\[([^\]]+)\]$/
                         vhash['type'] = 'list'
-                        vhash['entries'] = $2.split(',')
+                        vhash['entries'] = parse_list $2
                     elsif vargs.match /^(a|alpha)$/
                         vhash['type'] = 'alpha'
                     elsif vargs.match /^(a|alpha)\[(\d+),(\d+)(,(\d+))??\]$/
