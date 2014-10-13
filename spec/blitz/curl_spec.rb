@@ -134,6 +134,67 @@ describe Blitz::Curl do
             end
         end
 
+        context "variables" do
+            it "should raise Assertions::Error if variable name starts with number" do
+                command = %w[-p 5-10:10 -v:007 alpha http://example.com]
+                lambda { Blitz::Curl.parse_cli command}.should raise_error (MiniTest::Assertion)
+            end
+
+            it "should not raise error for variable name is simple string" do
+                command = %w[-p 5-10:10 -v:abc alpha http://example.com]
+                result = Blitz::Curl.parse_cli command
+                result['steps'][0]['variables'].key?('abc').should == true
+                result['steps'][0]['variables']['abc']['type'].should == 'alpha'
+            end
+
+            it "should accept list variable" do
+                command = %w[-p 5-10:10 -v:abc [1,2,3] http://example.com]
+                result = Blitz::Curl.parse_cli command
+                result['steps'][0]['variables']['abc']['type'].should == 'list'
+                result['steps'][0]['variables']['abc']['entries'].should == ["1", "2", "3"]
+            end
+
+            context "list" do
+                def verify_match expr, entries
+                    command = %W[-p 5-10:10 -v:abc #{expr} http://example.com]
+                    puts command.inspect
+                    result = Blitz::Curl.parse_cli command
+                    result['steps'][0]['variables']['abc']['type'].should == 'list'
+                    result['steps'][0]['variables']['abc']['entries'].should == entries
+                end
+
+                it "should accept list split by comma" do
+                    verify_match '[a,2,3]', ["a", "2", "3"]
+                end
+
+                it "should accept list with single element" do
+                    verify_match '[1]', ["1"]
+                end
+
+                it "should accept list variable with escaped comma" do
+                    verify_match '[1,\,2]', ["1", ",2"]
+                end
+
+                it "should accept list variable with escaped comma entry" do
+                    verify_match '[1,\,,2]', ["1", ",", "2"]
+                end
+
+                it "should accept list variable with empty string entry" do
+                    verify_match '[1,,2]', ["1", "", "2"]
+                end
+
+                it "should accept list variable with escaped comma" do
+                    verify_match '[1,foo\,bar]', ["1", "foo,bar"]
+                end
+
+            end
+
+            it "should raise NameError if variable argument is not expected" do
+                command = %w[-p 5-10:10 -v:abc xyz http://example.com]
+                lambda { Blitz::Parser.parse command}.should raise_error (NameError)
+            end
+        end
+
         context "pattern" do
             it "should check that a pattern is given" do
                 lambda { Blitz::Curl.parse_cli %w[--pattern] }.should raise_error(MiniTest::Assertion, /missing value/)

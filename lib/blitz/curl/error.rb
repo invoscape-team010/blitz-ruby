@@ -80,6 +80,17 @@ class Error < StandardError # :nodoc:
     # the assertion fails
     class Status < Step
     end
+    
+    # Generic performance test exception
+    class Performance < Region
+        # Failure reason
+        attr_reader :reason
+        
+        def initialize json # :nodoc:
+            @reason = json['reason']
+            super
+        end
+    end
 end
 end # Curl
 end # Blitz

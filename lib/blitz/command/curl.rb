@@ -13,8 +13,10 @@ class Curl < Command # :nodoc:
         end
         if test.class == Blitz::Curl::Sprint
             sprint test
-        else
+        elsif test.class == Blitz::Curl::Rush
             rush test
+        else
+            performance test
         end
     end
     
@@ -146,6 +148,107 @@ class Curl < Command # :nodoc:
         end
     end
 
+    def performance job
+        begin
+            job.queue
+            error "performance from #{yellow(job.region)}"
+            result = job.result
+            print_performance_result job, result
+        rescue ::Blitz::Curl::Error::Authorize => e
+            authorize_error e
+        # QUESTION shall we ::Blitz::Curl::Error::Step ?
+            error "#{red(e.message)}"
+        rescue ::Blitz::Curl::Error => e
+            error red(e.message)
+        end
+    end
+    
+    def to_msec date_str
+        DateTime.parse(date_str).strftime('%Q').to_i
+    end
+
+    def print_performance_result job, result
+        # HAR data
+        puts
+        print yellow("%9s " % "Started")
+        print yellow("%9s " % "Duration")
+        print green("%9s " % "Response")
+        print magenta("%4s " % "URL")
+        puts
+        
+        log = result.har['log']
+        entries = log['entries']
+        started = to_msec entries[0]['startedDateTime']
+        entries.each do |entry|
+            code = entry['response']['status'].to_i
+            next if code == 0
+       
+            print "%9s " % "#{to_msec(entry['startedDateTime']) - started}"
+            print "%9s " % "#{entry['time']}"
+            print code >= 300 ? code >= 400 ? red("%9s " % code) : yellow("%9s " % code) : green("%9s " % code)
+            print " #{entry['request']['url']}"
+            puts
+        end
+
+        puts
+        puts "Load time: #{green(result.har['log']['pages'][0]['pageTimings']['onLoad'].to_s)} msec"
+        puts
+        
+        # Analysis data
+        print_problems result, 1
+        print_problems result, 2
+        print_problems result, 3
+        
+        # Other options
+        if job.screenshot_file != nil
+          sleep 1 # api does't like too frequent calls
+          screenshot = result.get_screenshot
+          File.write(job.screenshot_file, screenshot)
+        end
+        
+        if job.har_file != nil
+          File.write(job.har_file, JSON.pretty_generate(result.har))
+        end
+    end
+    
+    def print_problems result, priority
+        return if priority > 3 or priority < 1
+
+        type_to_label = {
+            "js_errors" => "Javascript errors",
+            "http_errors_responses" => "HTTP errors responses",
+            "add_expires_cache_control" => "Add Expires or Cache-Control headers",
+            "redirects" => "Avoid Redirects",
+            "compress_gzip" => "Compress components with gzip",
+            "minify" => "Minify JavaScript",
+            "http_requests" => "Make fewer HTTP requests",
+            "use_cdn" => "Use a Content Delivery Network",
+            "reduce_dns_lookups" => "Reduce DNS Lookups",
+            "remove_duplicates" => "Remove Duplicate Scripts",
+            "reduce_cookie_size" => "Reduce cookies size",
+            "cookie_free_domains" => "Use cookies-free domains"
+        }
+        
+        priority_to_message = {
+            1 => ["Found #{red('%d problems')}",
+                "Found #{red('one problem')}"],
+            2 => ["Found #{yellow('%d warnings')}",
+                "Found #{yellow('one warning')}"],
+            3 => ["Consider also #{blue('the following %d tips')}",
+                "Consider also #{blue('the following tip')}"]
+        }
+        
+        problems = result.analysis.select { |problem| problem['priority'] == priority and problem['entries'].count > 0 }
+        if problems.count > 0
+            puts priority_to_message[priority][problems.count != 1 ? 0 : 1] % problems.count
+            problems.each do |problem|
+                desc = type_to_label.fetch(problem['type'], problem['type'])
+                puts "  * #{desc} (#{problem['entries'].count} URLs)"
+            end
+            puts
+        end
+    end 
+
     def rush job
         continue = true
         last_index = nil
@@ -160,6 +263,10 @@ class Curl < Command # :nodoc:
 
             if job.args.member?('output')
                 file = CSV.open(job.args['output'] || 'blitz.csv', 'w')
+            end
+            
+            if not file
+              print_rush_result_headers
             end
 
             job.result do |result|
@@ -188,19 +295,19 @@ class Curl < Command # :nodoc:
         end
     end
 
-    def print_rush_result args, result, last_index
-        if last_index.nil?
-            print yellow("%6s " % "Time")
-            print "%6s " % "Users"
-            print green("%8s " % "Response")
-            print green("%8s " % "Hits")
-            print magenta("%8s " % "Timeouts")
-            print red("%8s " % "Errors")
-            print green("%8s " % "Hits/s")
-            print "%s" % "Mbps"
-            puts
-        end
+    def print_rush_result_headers
+        print yellow("%6s " % "Time")
+        print "%6s " % "Users"
+        print green("%8s " % "Response")
+        print green("%8s " % "Hits")
+        print magenta("%8s " % "Timeouts")
+        print red("%8s " % "Errors")
+        print green("%8s " % "Hits/s")
+        print "%s" % "Mbps"
+        puts
+    end
 
+    def print_rush_result args, result, last_index
         if last_index and result.timeline.size == last_index
             return
         end
@@ -253,7 +360,7 @@ class Curl < Command # :nodoc:
     def help
         helps = [
             { :short => '-A', :long => '--user-agent', :value => '<string>', :help => 'User-Agent to send to server' },
-            { :short => '-b', :long => '--cookie', :value => 'name=<string>', :help => 'Cookie to send to the server (multiple)' },
+            { :short => '-b', :long => '--cookie', :value => 'name=<string>', :help => 'Cookie to send to the server (multiple, also with --har)' },
             { :short => '-d', :long => '--data', :value => '<string>', :help => 'Data to send in a PUT or POST request' },
             { :short => '-D', :long => '--dump-header', :value => '<file>', :help => 'Print the request/response headers' },
             { :short => '-e', :long => '--referer', :value => '<string>', :help => 'Referer URL' },
@@ -262,15 +369,19 @@ class Curl < Command # :nodoc:
             { :short => '-p', :long => '--pattern', :value => '<s>-<e>:<d>', :help => 'Ramp from s to e concurrent requests in d secs' },
             { :short => '-r', :long => '--region', :value => '<string>', :help => 'california|oregon|virginia|singapore|ireland|japan' },
             { :short => '-s', :long => '--status', :value => '<number>', :help => 'Assert on the HTTP response status code' },
+            { :short => '-k', :long => '--keepalive', :value => '', :help => 'Use keepalive connections' },
             { :short => '-T', :long => '--timeout', :value => '<ms>', :help => 'Wait time for both connect and responses' },
-            { :short => '-u', :long => '--user', :value => '<user[:pass]>', :help => 'User and password for authentication' },
+            { :short => '-u', :long => '--user', :value => '<user[:pass]>', :help => 'User and password for authentication (also with --har)' },
             { :short => '-X', :long => '--request', :value => '<string>', :help => 'Request method to use (GET, HEAD, PUT, etc.)' },
             { :short => '-v', :long => '--variable', :value => '<string>', :help => 'Define a variable to use' },
             { :short => '-V', :long => '--verbose', :value => '', :help => 'Print the request/response headers' },
-            { :short => '-o', :long => '--output', :value => '<filename>', :help => 'Output to file (CSV)' },
+            { :short => '-o', :long => '--output', :value => '<file>', :help => 'Output to file (CSV)' },
             { :short => '-1', :long => '--tlsv1', :value => '', :help => 'Use TLSv1 (SSL)' },
             { :short => '-2', :long => '--sslv2', :value => '', :help => 'Use SSLv2 (SSL)' },
-            { :short => '-3', :long => '--sslv3', :value => '', :help => 'Use SSLv3 (SSL)' }
+            { :short => '-3', :long => '--sslv3', :value => '', :help => 'Use SSL (SSLv3)' },
+            { :long => '--har', :value => '', :help => 'Run performance test' },
+            { :short => '-c', :long => '--screenshot', :value => '<file>', :help => 'Save PNG screenshot to file (only with --har)' },
+            { :short => '-R' , :long => '--dump-har', :value => '<file>', :help => 'Save raw HAR data (only with --har)' }
         ]
 
         max_long_size = helps.inject(0) { |memo, obj| [ obj[:long].size, memo ].max }

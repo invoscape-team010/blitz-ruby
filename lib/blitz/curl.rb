@@ -1,4 +1,5 @@
 require 'blitz/utils'
+require 'blitz/curl/performance'
 
 class Blitz
 class Curl    
@@ -13,7 +14,9 @@ class Curl
         argv = arguments.is_a?(Array) ? arguments : xargv(arguments)
         args = parse_cli argv
         raise "help" if args['help'] 
-        if not args['pattern']
+        if args['har']
+            Blitz::Curl::Performance.new args
+        elsif not args['pattern']
             Blitz::Curl::Sprint.new args
         else
             Blitz::Curl::Rush.new args
@@ -22,6 +25,14 @@ class Curl
     
     private
     
+    
+    def self.parse_list list_expr
+        # split, make sure comma isn't escaped
+        entries = list_expr.split /(?<!\\),/
+        # unescape commas
+        entries.map {|e| e.gsub "\\,", "," }
+    end
+
     def self.xargv text
         argv = []
         while not text.empty?
@@ -115,6 +126,11 @@ class Curl
                     next
                 end
 
+                if [ '-k', '--keepalive' ].member? k
+                    hash['keepalive'] = true
+                    next
+                end
+
                 if [ '-s', '--status' ].member? k
                     step['status'] = shift(k, argv).to_i
                     next
@@ -134,7 +150,32 @@ class Curl
                     step['request'] = shift(k, argv)
                     next
                 end
-
+                
+                if [ '--har' ].member? k
+                    hash['har'] = true
+                    next
+                end
+                
+                if [ '-c', '--screenshot' ].member? k
+                    if not hash['har']
+                      raise ArgumentError,
+                            "--screenshot allowed with --har only"
+                    else
+                      hash['screenshot-file'] = shift(k, argv)
+                      next
+                    end
+                end
+                
+                if [ '-R', '--dump-har' ].member? k
+                    if not hash['har']
+                      raise ArgumentError,
+                            "--dump-har allowed with --har only"
+                    else
+                      hash['har-file'] = shift(k, argv)
+                      next
+                    end
+                end
+                
                 if /-x:c/ =~ k or /--xtract:cookie/ =~ k
                     xname = shift(k, argv)
                     assert_match /^[a-zA-Z_][a-zA-Z_0-9]*$/, xname, 
@@ -156,7 +197,7 @@ class Curl
                     vhash = step['variables'][vname] = Hash.new
                     if vargs.match /^(list)?\[([^\]]+)\]$/
                         vhash['type'] = 'list'
-                        vhash['entries'] = $2.split(',')
+                        vhash['entries'] = parse_list $2
                     elsif vargs.match /^(a|alpha)$/
                         vhash['type'] = 'alpha'
                     elsif vargs.match /^(a|alpha)\[(\d+),(\d+)(,(\d+))??\]$/
