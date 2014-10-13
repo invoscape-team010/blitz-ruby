@@ -214,6 +214,8 @@ class Curl
                         vhash['count'] = $5 ? $5.to_i : 1000
                     elsif vargs.match /^(u|udid)$/
                         vhash['type'] = 'udid'
+                    elsif vargs.match /^(uuid)$/
+                        vhash['type'] = 'uuid'
                     else
                         raise ArgumentError, 
                             "Invalid variable args for #{vname}: #{vargs}"
