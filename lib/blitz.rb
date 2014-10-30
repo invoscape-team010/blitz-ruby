@@ -7,7 +7,7 @@ require 'csv'
 
 class Blitz # :nodoc:
     require 'blitz/helper'
-    Version = "0.1.25"
+    Version = "0.1.31"
         
     extend Blitz::Helper
     
