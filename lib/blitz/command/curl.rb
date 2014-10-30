@@ -367,7 +367,7 @@ class Curl < Command # :nodoc:
             { :short => '-h', :long => '--help', :value => '', :help => 'Help on command line options' },
             { :short => '-H', :long => '--header', :value => '<string>', :help => 'Custom header to pass to server' },
             { :short => '-p', :long => '--pattern', :value => '<s>-<e>:<d>', :help => 'Ramp from s to e concurrent requests in d secs' },
-            { :short => '-r', :long => '--region', :value => '<string>', :help => 'california|oregon|virginia|singapore|ireland|japan' },
+            { :short => '-r', :long => '--region', :value => '<string>', :help => 'california|oregon|virginia|singapore|ireland|japan|germany' },
             { :short => '-s', :long => '--status', :value => '<number>', :help => 'Assert on the HTTP response status code' },
             { :short => '-k', :long => '--keepalive', :value => '', :help => 'Use keepalive connections' },
             { :short => '-T', :long => '--timeout', :value => '<ms>', :help => 'Wait time for both connect and responses' },
