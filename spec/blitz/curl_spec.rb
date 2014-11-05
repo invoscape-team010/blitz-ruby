@@ -244,6 +244,49 @@ describe Blitz::Curl do
             end
         end
 
+        context "multiregion" do
+            it "should parse with multiple regions" do
+                args = "-p [virginia:5-10, japan:3-20]:10 http://example.com".split ' '
+                result = Blitz::Curl.parse_cli args
+                interval = result['pattern']['intervals'][0]
+                interval['duration'].should == 10
+                interval['start'].should == 8
+                interval['end'].should == 30
+                interval['affinity']['regions'][0]['region'].should == 'virginia'
+                interval['affinity']['regions'][0]['start'].should == 5
+                interval['affinity']['regions'][0]['end'].should == 10
+                interval['affinity']['regions'][1]['region'].should == 'japan'
+                interval['affinity']['regions'][1]['start'].should == 3
+                interval['affinity']['regions'][1]['end'].should == 20
+            end
+
+            it "should parse with multiple multi-region intervals" do
+                args = "-p [virginia:5-10, japan:3-20]:10 -p [california:10-3, texas:20-5]:20 http://example.com".split ' '
+                result = Blitz::Curl.parse_cli args
+                interval = result['pattern']['intervals'][0]
+                interval['duration'].should == 10
+                interval['start'].should == 8
+                interval['end'].should == 30
+                interval['affinity']['regions'][0]['region'].should == 'virginia'
+                interval['affinity']['regions'][0]['start'].should == 5
+                interval['affinity']['regions'][0]['end'].should == 10
+                interval['affinity']['regions'][1]['region'].should == 'japan'
+                interval['affinity']['regions'][1]['start'].should == 3
+                interval['affinity']['regions'][1]['end'].should == 20
+
+                interval = result['pattern']['intervals'][1]
+                interval['duration'].should == 20
+                interval['start'].should == 30
+                interval['end'].should == 8
+                interval['affinity']['regions'][0]['region'].should == 'california'
+                interval['affinity']['regions'][0]['start'].should == 10
+                interval['affinity']['regions'][0]['end'].should == 3
+                interval['affinity']['regions'][1]['region'].should == 'texas'
+                interval['affinity']['regions'][1]['start'].should == 20
+                interval['affinity']['regions'][1]['end'].should == 5
+            end
+        end
+
         context "status" do
             it "should check that a status is given" do
                 lambda { Blitz::Curl.parse_cli %w[--status] }.should raise_error(MiniTest::Assertion, /missing value/)
