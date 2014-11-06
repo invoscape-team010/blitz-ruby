@@ -9,12 +9,18 @@ class Curl
     RE_NOT_WS = /^[^\s]+/.freeze
     RE_DQ_STRING = /^"[^"\\\r\n]*(?:\\.[^"\\\r\n]*)*"/.freeze
     RE_SQ_STRING = /^'[^'\\\r\n]*(?:\\.[^'\\\r\n]*)*'/.freeze
+    RE_MR_BEGIN = /\[/.freeze
+    RE_MR_END = /\]:(\d+)$/.freeze
+    RE_MR_WHOLE = /^\[([^\]]+)\]:(\d+)$/.freeze
+    RE_PATTERN = /^(\d+)-(\d+):(\d+)$/.freeze
+    INVALID_RAMP_PATTERN = 'Invalid ramp pattern'.freeze
     
     def self.parse arguments
         argv = arguments.is_a?(Array) ? arguments : xargv(arguments)
         args = parse_cli argv
-        raise "help" if args['help'] 
-        if args['har']
+        if args['help']
+            raise ArgumentError, "help"
+        elsif args['har']
             Blitz::Curl::Performance.new args
         elsif not args['pattern']
             Blitz::Curl::Sprint.new args
@@ -49,6 +55,56 @@ class Curl
     def self.strip_quotes text
         return text unless text.match RE_DQ_STRING or text.match RE_SQ_STRING
         text[1, (text.size - 2)]
+    end
+    # returns false if v is not a start of multi-region pattern
+    def self.parse_regions argv, k, v, hash
+        return false unless v =~ RE_MR_BEGIN
+
+        while not argv.empty? and not v =~ RE_MR_END
+            next_v = shift(k, argv)
+            v += next_v
+        end
+
+        if v =~ RE_MR_WHOLE
+            duration = $2.to_i
+            intervals = $1.split ','
+            regions = []
+            total_start = 0
+            total_end = 0
+            intervals.each do |region_interval|
+                region, interval = region_interval.split ':'
+                unless region and interval
+                    raise ArgumentError, INVALID_RAMP_PATTERN
+                end
+
+                interval_start, interval_end = interval.split '-'
+                unless interval_start and interval_end
+                    raise ArgumentError, INVALID_RAMP_PATTERN
+                end
+
+                region_pattern = {
+                    'region' => region,
+                    'start'  => interval_start.to_i,
+                    'end'    => interval_end.to_i
+                }
+                total_start += region_pattern['start']
+                total_end += region_pattern['end']
+                regions << region_pattern
+            end
+
+            pattern = {
+                'iterations' => 1,
+                'start' => total_start,
+                'end' => total_end,
+                'duration' => duration,
+                'affinity' => { 'regions' => regions }
+            }
+            hash['pattern'] ||= { 'iterations' => 1, 'intervals' => [] }
+            hash['pattern']['intervals'] << pattern
+        else
+            raise ArgumentError, INVALID_RAMP_PATTERN
+        end
+        true
     end
     
     def self.parse_cli argv
@@ -105,18 +161,29 @@ class Curl
 
                 if [ '-p', '--pattern' ].member? k
                     v = shift(k, argv)
-                    v.split(',').each do |vt|
-                        unless /^(\d+)-(\d+):(\d+)$/ =~ vt
-                            raise Test::Unit::AssertionFailedError, 
-                                "invalid ramp pattern"
+                    if self.parse_regions argv, k, v, hash
+                        next
+                    end
+                    ramp = v.split','
+                    ramp.each do |vt|
+                        pattern = { 'iterations' => 1 }
+                        unless RE_PATTERN =~ vt
+                            #wrong pattern if this is the first interval or not a number
+                            intervals = hash['pattern']['intervals'] rescue nil
+                            if intervals.nil? or /^(\d+)$/ !~ vt
+                                raise ArgumentError, INVALID_RAMP_PATTERN
+                            end
+                            last = hash['pattern']['intervals'].last
+                            pattern['start'] = last['end']
+                            pattern['end'] = last['end']
+                            pattern['duration'] = $1.to_i
+                        else
+                            pattern['start'] = $1.to_i
+                            pattern['end'] = $2.to_i
+                            pattern['duration'] = $3.to_i
                         end
                         hash['pattern'] ||= { 'iterations' => 1, 'intervals' => [] }
-                        hash['pattern']['intervals'] << {
-                            'iterations' => 1,
-                            'start' => $1.to_i,
-                            'end' => $2.to_i,
-                            'duration' => $3.to_i
-                        }
+                        hash['pattern']['intervals'] << pattern
                     end
                     next
                 end
