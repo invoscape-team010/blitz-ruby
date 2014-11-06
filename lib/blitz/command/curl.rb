@@ -25,32 +25,10 @@ class Curl < Command # :nodoc:
 
     private
     def authorize_error e
-        base_url = "#{e.scheme}://#{e.host}:#{e.port}"
-        puts
-        error "You haven't verified that you are the devops dude for #{e.host}. Make"
-        error "sure the following URL is reachable and returns the string '42'."
-        error ""
-        error "#{base_url}/#{e.uuid}"
-        error ""
-        if e.checks
-            error "We tried checking the following URLs and got this"
-            error ""
-            e.checks.each do |check|
-                bytes = ''
-                if check['bytes']
-                    bytes = '| ' + check['bytes']
-                end
-                error "#{bold(red(check['code']))} | #{cyan(check['url'])} #{bytes}"
-            end
-            error ''
-        end
-        error "If your app is RESTfully built with sinatra or rails, simply add this route:"
-        error ""
-        error "get '/#{cyan(e.uuid)}' do"
-        error "    '42'"
-        error "end"
-        error ""
-        error "Once this is done, you can blitz #{cyan(e.host)} all you want."
+        error "You haven't verified that you are the devops dude for the target host."
+        error "Authorize it before rushing using web UI"
+        error "To get authorization instructions open Settings -> Blitz keys -> Authorization"
+        error "Once domain authorization is done, you will be able to rush it"
         puts
     end
 
