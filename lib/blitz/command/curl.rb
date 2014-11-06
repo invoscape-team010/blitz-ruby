@@ -8,14 +8,15 @@ class Curl < Command # :nodoc:
     def cmd_run argv
         begin
             test = Blitz::Curl.parse argv
-        rescue "help"
-            return help
+        rescue ArgumentError
+            help
+            return
         end
         if test.class == Blitz::Curl::Sprint
             sprint test
         elsif test.class == Blitz::Curl::Rush
             rush test
-        else
+        else test.class  == Blitz::Curl::Performance
             performance test
         end
     end

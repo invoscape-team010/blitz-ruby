@@ -18,8 +18,9 @@ class Curl
     def self.parse arguments
         argv = arguments.is_a?(Array) ? arguments : xargv(arguments)
         args = parse_cli argv
-        raise "help" if args['help'] 
-        if args['har']
+        if args['help']
+            raise ArgumentError, "help"
+        elsif args['har']
             Blitz::Curl::Performance.new args
         elsif not args['pattern']
             Blitz::Curl::Sprint.new args
