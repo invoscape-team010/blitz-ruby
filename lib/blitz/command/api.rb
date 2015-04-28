@@ -5,6 +5,7 @@ class API < Command # :nodoc:
 
     def cmd_init argv
         FileUtils.rm credentials_file rescue nil
+        p "&&&&&&&&&&&&&"
         API.client(argv)
 
         msg "You are now ready to blitz!"
