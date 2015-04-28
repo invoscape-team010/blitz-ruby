@@ -7,7 +7,7 @@ class API < Command # :nodoc:
     def cmd_init argv
         FileUtils.rm credentials_file rescue nil
         p argv.inspect
-        write_attribute(:cmd_line_args, argv)
+        self.cmd_line_args = argv
         API.client
 
         msg "You are now ready to blitz!"
@@ -15,7 +15,7 @@ class API < Command # :nodoc:
     end
 
     def client
-      p self.cmd_line_args.inspect
+      p argv.inspect
         get_credentials
         Blitz::Client.new(user, password, host)
     end
