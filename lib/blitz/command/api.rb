@@ -14,7 +14,6 @@ class API < Command # :nodoc:
     end
 
     def client
-      p @@cmd_line_args
         get_credentials
         Blitz::Client.new(user, password, host)
     end
@@ -38,7 +37,6 @@ class API < Command # :nodoc:
     end
 
     def get_credentials
-      p self.cmd_line_args.inspect
         return if @credentials
         unless @credentials = read_credentials
             @credentials = ask_for_credentials
@@ -52,16 +50,15 @@ class API < Command # :nodoc:
     end
 
     def ask_for_credentials
-      p self.cmd_line_args.inspect
-        if self.cmd_line_args.blank?
+        if @@cmd_line_args.blank?
           msg "Enter your blitz credentials. You can find this in #{green('Settings/API Key')}."
           print "User-ID: "
           user = ask
           print "API-Key: "
           apik = ask
         else
-          user = argv[0]
-          apik = argv[1]
+          user = @@cmd_line_args[0]
+          apik = @@cmd_line_args[1]
         end
         apik2 = Blitz::Client.new(user, apik, host).login['api_key']
         if not apik2
