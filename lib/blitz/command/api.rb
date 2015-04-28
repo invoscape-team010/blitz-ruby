@@ -2,6 +2,7 @@ class Blitz
 class Command
 class API < Command # :nodoc:
     attr_accessor :credentials
+    attr_accessor :argv
 
     def cmd_init argv
         FileUtils.rm credentials_file rescue nil
