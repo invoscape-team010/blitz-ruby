@@ -8,7 +8,7 @@ class API < Command # :nodoc:
         FileUtils.rm credentials_file rescue nil
         p argv.inspect
         @cmd_line_args = argv
-        API.client
+        # API.client
 
         msg "You are now ready to blitz!"
         msg "Try blitz help to learn more about the commands."
