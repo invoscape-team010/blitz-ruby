@@ -50,7 +50,7 @@ class API < Command # :nodoc:
     end
 
     def ask_for_credentials
-        if @@cmd_line_args.blank?
+        if @@cmd_line_args.empty?
           msg "Enter your blitz credentials. You can find this in #{green('Settings/API Key')}."
           print "User-ID: "
           user = ask
