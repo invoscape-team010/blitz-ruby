@@ -5,16 +5,16 @@ class API < Command # :nodoc:
 
     def cmd_init argv
         FileUtils.rm credentials_file rescue nil
-        p "&&&&&&&&&&&&&"
-        API.client(argv)
+        @argv = argv
+        API.client
 
         msg "You are now ready to blitz!"
         msg "Try blitz help to learn more about the commands."
     end
 
-    def client(argv=nil)
-      p "^^^^^^^^^^^"
-        get_credentials(argv)
+    def client
+      p @argv.inspect
+        get_credentials
         Blitz::Client.new(user, password, host)
     end
 
@@ -36,11 +36,11 @@ class API < Command # :nodoc:
         ENV['HOME'] + '/.blitz/credentials'
     end
 
-    def get_credentials(argv=nil)
-      p "*********"
+    def get_credentials
+      p @argv.inspect
         return if @credentials
         unless @credentials = read_credentials
-            @credentials = ask_for_credentials(argv)
+            @credentials = ask_for_credentials
             save_credentials
         end
         @credentials
@@ -50,9 +50,9 @@ class API < Command # :nodoc:
         File.exists?(credentials_file) and File.read(credentials_file).split("\n")
     end
 
-    def ask_for_credentials(argv=nil)
-        p "&&&&&&&&&&&&&&&&&"
-        if argv.blank?
+    def ask_for_credentials
+      p @argv.inspect
+        if @argv.blank?
           msg "Enter your blitz credentials. You can find this in #{green('Settings/API Key')}."
           print "User-ID: "
           user = ask
